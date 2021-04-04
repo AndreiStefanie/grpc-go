@@ -8,6 +8,8 @@ import (
 
 	"github.com/AndreiStefanie/grpc-go/calculator/pb"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 type server struct {
@@ -47,9 +49,10 @@ func (s *server) Average(stream pb.CalcService_AverageServer) error {
 
 		if err == io.EOF {
 			result := 0.0
-			if count != 0 {
-				result = (float64(sum)) / (float64(count))
+			if count == 0 {
+				return status.Error(codes.InvalidArgument, "At least one number expected")
 			}
+			result = (float64(sum)) / (float64(count))
 			stream.SendAndClose(&pb.AverageResponse{Result: result})
 			break
 		}

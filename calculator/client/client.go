@@ -8,6 +8,7 @@ import (
 
 	"github.com/AndreiStefanie/grpc-go/calculator/pb"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/status"
 )
 
 func main() {
@@ -20,8 +21,8 @@ func main() {
 	c := pb.NewCalcServiceClient(conn)
 	// sum(c)
 	// decompose(c)
-	// average(c)
-	maximum(c)
+	average(c)
+	// maximum(c)
 }
 
 func sum(c pb.CalcServiceClient) {
@@ -70,7 +71,7 @@ func average(c pb.CalcServiceClient) {
 		log.Fatalf("Failed to start streaming data: %v", err)
 	}
 
-	numbers := []int32{1, 2, 3, 4}
+	numbers := []int32{}
 
 	for _, num := range numbers {
 		stream.Send(&pb.AverageRequest{Number: num})
@@ -79,7 +80,13 @@ func average(c pb.CalcServiceClient) {
 
 	res, err := stream.CloseAndRecv()
 	if err != nil {
-		log.Fatalf("Failed to receive result: %v", err)
+		status, ok := status.FromError(err)
+		if ok {
+			log.Println(status.Message())
+			return
+		} else {
+			log.Fatalf("Unexpected error ocurred: %v", err)
+		}
 	}
 
 	log.Println(res.GetResult())
