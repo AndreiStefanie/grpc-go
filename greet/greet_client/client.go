@@ -4,6 +4,7 @@ import (
 	"context"
 	"io"
 	"log"
+	"time"
 
 	"github.com/AndreiStefanie/grpc-go/greet/greetpb"
 	"google.golang.org/grpc"
@@ -18,7 +19,8 @@ func main() {
 
 	c := greetpb.NewGreetServiceClient(conn)
 	// doUnary(c)
-	doServerStream(c)
+	// doServerStream(c)
+	doClientStream(c)
 }
 
 func doUnary(c greetpb.GreetServiceClient) {
@@ -58,4 +60,32 @@ func doServerStream(c greetpb.GreetServiceClient) {
 
 		log.Println(msg.Result)
 	}
+}
+
+func doClientStream(c greetpb.GreetServiceClient) {
+	stream, err := c.LongGreet(context.Background())
+	if err != nil {
+		log.Fatalf("Could not long greet: %v", err)
+	}
+
+	requests := []*greetpb.GreetRequest{
+		{
+			Greeting: &greetpb.Greeting{FirstName: "Andrei"},
+		},
+		{
+			Greeting: &greetpb.Greeting{FirstName: "Petru"},
+		},
+	}
+
+	for _, req := range requests {
+		stream.Send(req)
+		time.Sleep(time.Second)
+	}
+
+	res, err := stream.CloseAndRecv()
+	if err != nil {
+		log.Fatalf("Error while closing the client stream: %v", err)
+	}
+
+	log.Println(res.Result)
 }

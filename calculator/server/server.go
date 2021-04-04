@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"io"
 	"log"
 	"net"
 
@@ -32,6 +33,32 @@ func (s *server) Decompose(req *pb.DecompositionRequest, stream pb.CalcService_D
 		} else {
 			factor++
 		}
+	}
+
+	return nil
+}
+
+func (s *server) Average(stream pb.CalcService_AverageServer) error {
+	var sum int32
+	var count int
+
+	for {
+		req, err := stream.Recv()
+
+		if err == io.EOF {
+			result := 0.0
+			if count != 0 {
+				result = (float64(sum)) / (float64(count))
+			}
+			stream.SendAndClose(&pb.AverageResponse{Result: result})
+			break
+		}
+		if err != nil {
+			log.Fatalf("Failed while receiving stream request: %v", err)
+		}
+
+		sum += req.GetNumber()
+		count++
 	}
 
 	return nil

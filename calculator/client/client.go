@@ -4,6 +4,7 @@ import (
 	"context"
 	"io"
 	"log"
+	"time"
 
 	"github.com/AndreiStefanie/grpc-go/calculator/pb"
 	"google.golang.org/grpc"
@@ -18,7 +19,8 @@ func main() {
 
 	c := pb.NewCalcServiceClient(conn)
 	// sum(c)
-	decompose(c)
+	// decompose(c)
+	average(c)
 }
 
 func sum(c pb.CalcServiceClient) {
@@ -59,4 +61,25 @@ func decompose(c pb.CalcServiceClient) {
 
 		log.Println(res.GetFactor())
 	}
+}
+
+func average(c pb.CalcServiceClient) {
+	stream, err := c.Average(context.Background())
+	if err != nil {
+		log.Fatalf("Failed to start streaming data: %v", err)
+	}
+
+	numbers := []int32{1, 2, 3, 4}
+
+	for _, num := range numbers {
+		stream.Send(&pb.AverageRequest{Number: num})
+		time.Sleep(time.Second)
+	}
+
+	res, err := stream.CloseAndRecv()
+	if err != nil {
+		log.Fatalf("Failed to receive result: %v", err)
+	}
+
+	log.Println(res.GetResult())
 }

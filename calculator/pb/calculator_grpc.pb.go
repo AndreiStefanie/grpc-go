@@ -20,6 +20,7 @@ const _ = grpc.SupportPackageIsVersion7
 type CalcServiceClient interface {
 	Add(ctx context.Context, in *CalcRequest, opts ...grpc.CallOption) (*CalcResponse, error)
 	Decompose(ctx context.Context, in *DecompositionRequest, opts ...grpc.CallOption) (CalcService_DecomposeClient, error)
+	Average(ctx context.Context, opts ...grpc.CallOption) (CalcService_AverageClient, error)
 }
 
 type calcServiceClient struct {
@@ -71,12 +72,47 @@ func (x *calcServiceDecomposeClient) Recv() (*DecompositionResponse, error) {
 	return m, nil
 }
 
+func (c *calcServiceClient) Average(ctx context.Context, opts ...grpc.CallOption) (CalcService_AverageClient, error) {
+	stream, err := c.cc.NewStream(ctx, &CalcService_ServiceDesc.Streams[1], "/calculator.CalcService/Average", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &calcServiceAverageClient{stream}
+	return x, nil
+}
+
+type CalcService_AverageClient interface {
+	Send(*AverageRequest) error
+	CloseAndRecv() (*AverageResponse, error)
+	grpc.ClientStream
+}
+
+type calcServiceAverageClient struct {
+	grpc.ClientStream
+}
+
+func (x *calcServiceAverageClient) Send(m *AverageRequest) error {
+	return x.ClientStream.SendMsg(m)
+}
+
+func (x *calcServiceAverageClient) CloseAndRecv() (*AverageResponse, error) {
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	m := new(AverageResponse)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 // CalcServiceServer is the server API for CalcService service.
 // All implementations must embed UnimplementedCalcServiceServer
 // for forward compatibility
 type CalcServiceServer interface {
 	Add(context.Context, *CalcRequest) (*CalcResponse, error)
 	Decompose(*DecompositionRequest, CalcService_DecomposeServer) error
+	Average(CalcService_AverageServer) error
 	mustEmbedUnimplementedCalcServiceServer()
 }
 
@@ -89,6 +125,9 @@ func (UnimplementedCalcServiceServer) Add(context.Context, *CalcRequest) (*CalcR
 }
 func (UnimplementedCalcServiceServer) Decompose(*DecompositionRequest, CalcService_DecomposeServer) error {
 	return status.Errorf(codes.Unimplemented, "method Decompose not implemented")
+}
+func (UnimplementedCalcServiceServer) Average(CalcService_AverageServer) error {
+	return status.Errorf(codes.Unimplemented, "method Average not implemented")
 }
 func (UnimplementedCalcServiceServer) mustEmbedUnimplementedCalcServiceServer() {}
 
@@ -142,6 +181,32 @@ func (x *calcServiceDecomposeServer) Send(m *DecompositionResponse) error {
 	return x.ServerStream.SendMsg(m)
 }
 
+func _CalcService_Average_Handler(srv interface{}, stream grpc.ServerStream) error {
+	return srv.(CalcServiceServer).Average(&calcServiceAverageServer{stream})
+}
+
+type CalcService_AverageServer interface {
+	SendAndClose(*AverageResponse) error
+	Recv() (*AverageRequest, error)
+	grpc.ServerStream
+}
+
+type calcServiceAverageServer struct {
+	grpc.ServerStream
+}
+
+func (x *calcServiceAverageServer) SendAndClose(m *AverageResponse) error {
+	return x.ServerStream.SendMsg(m)
+}
+
+func (x *calcServiceAverageServer) Recv() (*AverageRequest, error) {
+	m := new(AverageRequest)
+	if err := x.ServerStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 // CalcService_ServiceDesc is the grpc.ServiceDesc for CalcService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -159,6 +224,11 @@ var CalcService_ServiceDesc = grpc.ServiceDesc{
 			StreamName:    "Decompose",
 			Handler:       _CalcService_Decompose_Handler,
 			ServerStreams: true,
+		},
+		{
+			StreamName:    "Average",
+			Handler:       _CalcService_Average_Handler,
+			ClientStreams: true,
 		},
 	},
 	Metadata: "calculator/pb/calculator.proto",

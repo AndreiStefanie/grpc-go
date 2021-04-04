@@ -18,8 +18,11 @@ message GreetResponse {
 
 service GreetService {
   // Unary
-  rpc Greet (GreetRequest) returns (GreetResponse) {};
+  rpc Greet (GreetRequest) returns (GreetResponse);
 
   // Server Stream
-  rpc GreetManyTimes (GreetRequest) returns (stream GreetResponse) {};
+  rpc GreetManyTimes (GreetRequest) returns (stream GreetResponse);
+
+  // Client Stream
+  rpc LongGreet (stream GreetRequest) returns (GreetResponse);
 }
