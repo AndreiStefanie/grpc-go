@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net"
@@ -13,8 +14,19 @@ type server struct {
 	greetpb.UnimplementedGreetServiceServer
 }
 
+func (*server) Greet(ctx context.Context, req *greetpb.GreetRequest) (*greetpb.GreetResponse, error) {
+	firstName := req.GetGreeting().GetFirstName()
+
+	result := "Hello " + firstName
+	res := &greetpb.GreetResponse{
+		Result: result,
+	}
+
+	return res, nil
+}
+
 func main() {
-	fmt.Println("Hello world!")
+	fmt.Println("Starting server :D")
 
 	lis, err := net.Listen("tcp", "0.0.0.0:50051")
 	if err != nil {
