@@ -64,6 +64,27 @@ func (s *server) Average(stream pb.CalcService_AverageServer) error {
 	return nil
 }
 
+func (s *server) Maximum(stream pb.CalcService_MaximumServer) error {
+	var currentMax int32
+
+	for {
+		req, err := stream.Recv()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return err
+		}
+
+		if req.GetNumber() > currentMax {
+			currentMax = req.GetNumber()
+			stream.Send(&pb.MaxResponse{Max: currentMax})
+		}
+	}
+
+	return nil
+}
+
 func main() {
 	log.Println("Starting the calculator server")
 

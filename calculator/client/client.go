@@ -20,7 +20,8 @@ func main() {
 	c := pb.NewCalcServiceClient(conn)
 	// sum(c)
 	// decompose(c)
-	average(c)
+	// average(c)
+	maximum(c)
 }
 
 func sum(c pb.CalcServiceClient) {
@@ -82,4 +83,43 @@ func average(c pb.CalcServiceClient) {
 	}
 
 	log.Println(res.GetResult())
+}
+
+func maximum(c pb.CalcServiceClient) {
+	stream, err := c.Maximum(context.Background())
+	if err != nil {
+		log.Fatalf("Failed to open the stream: %v", err)
+	}
+
+	numbers := []int32{1, 5, 3, 6, 2, 20}
+
+	waitc := make(chan struct{})
+
+	go func() {
+		for _, num := range numbers {
+			err := stream.Send(&pb.MaxRequest{Number: num})
+			if err != nil {
+				log.Fatalf(" Failed to send the message: %v", err)
+			}
+			time.Sleep(time.Second)
+		}
+		stream.CloseSend()
+	}()
+
+	go func() {
+		defer close(waitc)
+		for {
+			res, err := stream.Recv()
+			if err == io.EOF {
+				break
+			}
+			if err != nil {
+				log.Fatalf("Failed to receive the result: %v", err)
+			}
+
+			log.Printf("Current maximum: %v\n", res.GetMax())
+		}
+	}()
+
+	<-waitc
 }

@@ -20,7 +20,8 @@ func main() {
 	c := greetpb.NewGreetServiceClient(conn)
 	// doUnary(c)
 	// doServerStream(c)
-	doClientStream(c)
+	// doClientStream(c)
+	doBiDi(c)
 }
 
 func doUnary(c greetpb.GreetServiceClient) {
@@ -88,4 +89,49 @@ func doClientStream(c greetpb.GreetServiceClient) {
 	}
 
 	log.Println(res.Result)
+}
+
+func doBiDi(c greetpb.GreetServiceClient) {
+	stream, err := c.GreetEveryone(context.Background())
+	if err != nil {
+		log.Fatalf("Error while creating the stream: %v", err)
+	}
+
+	requests := []*greetpb.GreetRequest{
+		{
+			Greeting: &greetpb.Greeting{FirstName: "Andrei"},
+		},
+		{
+			Greeting: &greetpb.Greeting{FirstName: "Petru"},
+		},
+	}
+
+	waitc := make(chan struct{})
+
+	go func() {
+		for _, req := range requests {
+			stream.Send(req)
+			time.Sleep(time.Second)
+		}
+		err := stream.CloseSend()
+		if err != nil {
+			log.Fatalf("Failed to close the stream: %v", err)
+		}
+	}()
+
+	go func() {
+		defer close(waitc)
+		for {
+			res, err := stream.Recv()
+			if err == io.EOF {
+				break
+			}
+			if err != nil {
+				log.Fatalf("Error while receiving: %v", err)
+			}
+			log.Println(res.GetResult())
+		}
+	}()
+
+	<-waitc
 }
