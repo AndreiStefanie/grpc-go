@@ -21,6 +21,22 @@ func (s *server) Add(ctx context.Context, req *pb.CalcRequest) (*pb.CalcResponse
 	return res, nil
 }
 
+func (s *server) Decompose(req *pb.DecompositionRequest, stream pb.CalcService_DecomposeServer) error {
+	number := req.GetDecomposition().GetNumber()
+
+	var factor int32 = 2
+	for number > 1 {
+		if number%factor == 0 {
+			stream.Send(&pb.DecompositionResponse{Factor: factor})
+			number /= factor
+		} else {
+			factor++
+		}
+	}
+
+	return nil
+}
+
 func main() {
 	log.Println("Starting the calculator server")
 

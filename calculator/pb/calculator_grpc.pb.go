@@ -19,6 +19,7 @@ const _ = grpc.SupportPackageIsVersion7
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type CalcServiceClient interface {
 	Add(ctx context.Context, in *CalcRequest, opts ...grpc.CallOption) (*CalcResponse, error)
+	Decompose(ctx context.Context, in *DecompositionRequest, opts ...grpc.CallOption) (CalcService_DecomposeClient, error)
 }
 
 type calcServiceClient struct {
@@ -31,11 +32,43 @@ func NewCalcServiceClient(cc grpc.ClientConnInterface) CalcServiceClient {
 
 func (c *calcServiceClient) Add(ctx context.Context, in *CalcRequest, opts ...grpc.CallOption) (*CalcResponse, error) {
 	out := new(CalcResponse)
-	err := c.cc.Invoke(ctx, "/calculator.CalcService/add", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/calculator.CalcService/Add", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
+}
+
+func (c *calcServiceClient) Decompose(ctx context.Context, in *DecompositionRequest, opts ...grpc.CallOption) (CalcService_DecomposeClient, error) {
+	stream, err := c.cc.NewStream(ctx, &CalcService_ServiceDesc.Streams[0], "/calculator.CalcService/Decompose", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &calcServiceDecomposeClient{stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+type CalcService_DecomposeClient interface {
+	Recv() (*DecompositionResponse, error)
+	grpc.ClientStream
+}
+
+type calcServiceDecomposeClient struct {
+	grpc.ClientStream
+}
+
+func (x *calcServiceDecomposeClient) Recv() (*DecompositionResponse, error) {
+	m := new(DecompositionResponse)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
 }
 
 // CalcServiceServer is the server API for CalcService service.
@@ -43,6 +76,7 @@ func (c *calcServiceClient) Add(ctx context.Context, in *CalcRequest, opts ...gr
 // for forward compatibility
 type CalcServiceServer interface {
 	Add(context.Context, *CalcRequest) (*CalcResponse, error)
+	Decompose(*DecompositionRequest, CalcService_DecomposeServer) error
 	mustEmbedUnimplementedCalcServiceServer()
 }
 
@@ -52,6 +86,9 @@ type UnimplementedCalcServiceServer struct {
 
 func (UnimplementedCalcServiceServer) Add(context.Context, *CalcRequest) (*CalcResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Add not implemented")
+}
+func (UnimplementedCalcServiceServer) Decompose(*DecompositionRequest, CalcService_DecomposeServer) error {
+	return status.Errorf(codes.Unimplemented, "method Decompose not implemented")
 }
 func (UnimplementedCalcServiceServer) mustEmbedUnimplementedCalcServiceServer() {}
 
@@ -76,12 +113,33 @@ func _CalcService_Add_Handler(srv interface{}, ctx context.Context, dec func(int
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/calculator.CalcService/add",
+		FullMethod: "/calculator.CalcService/Add",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(CalcServiceServer).Add(ctx, req.(*CalcRequest))
 	}
 	return interceptor(ctx, in, info, handler)
+}
+
+func _CalcService_Decompose_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(DecompositionRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(CalcServiceServer).Decompose(m, &calcServiceDecomposeServer{stream})
+}
+
+type CalcService_DecomposeServer interface {
+	Send(*DecompositionResponse) error
+	grpc.ServerStream
+}
+
+type calcServiceDecomposeServer struct {
+	grpc.ServerStream
+}
+
+func (x *calcServiceDecomposeServer) Send(m *DecompositionResponse) error {
+	return x.ServerStream.SendMsg(m)
 }
 
 // CalcService_ServiceDesc is the grpc.ServiceDesc for CalcService service.
@@ -92,10 +150,16 @@ var CalcService_ServiceDesc = grpc.ServiceDesc{
 	HandlerType: (*CalcServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "add",
+			MethodName: "Add",
 			Handler:    _CalcService_Add_Handler,
 		},
 	},
-	Streams:  []grpc.StreamDesc{},
+	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "Decompose",
+			Handler:       _CalcService_Decompose_Handler,
+			ServerStreams: true,
+		},
+	},
 	Metadata: "calculator/pb/calculator.proto",
 }

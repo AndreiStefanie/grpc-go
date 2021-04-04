@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"io"
 	"log"
 
 	"github.com/AndreiStefanie/grpc-go/greet/greetpb"
@@ -16,7 +17,8 @@ func main() {
 	defer conn.Close()
 
 	c := greetpb.NewGreetServiceClient(conn)
-	doUnary(c)
+	// doUnary(c)
+	doServerStream(c)
 }
 
 func doUnary(c greetpb.GreetServiceClient) {
@@ -30,4 +32,30 @@ func doUnary(c greetpb.GreetServiceClient) {
 	}
 
 	log.Println(res.Result)
+}
+
+func doServerStream(c greetpb.GreetServiceClient) {
+	req := &greetpb.GreetRequest{
+		Greeting: &greetpb.Greeting{
+			FirstName: "Andrei",
+			LastName:  "Stefanie",
+		},
+	}
+	resStream, err := c.GreetManyTimes(context.Background(), req)
+	if err != nil {
+		log.Fatalf("Failed to greet many times: %v", err)
+	}
+
+	for {
+		msg, err := resStream.Recv()
+		if err == io.EOF {
+			log.Println("Stream closed")
+			break
+		}
+		if err != nil {
+			log.Fatalf("Failed to receive message: %v", err)
+		}
+
+		log.Println(msg.Result)
+	}
 }
