@@ -11,6 +11,8 @@ import (
 
 	"github.com/AndreiStefanie/grpc-go/greet/greetpb"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 type server struct {
@@ -18,6 +20,14 @@ type server struct {
 }
 
 func (*server) Greet(ctx context.Context, req *greetpb.GreetRequest) (*greetpb.GreetResponse, error) {
+	for i := 0; i < 1; i++ {
+		if ctx.Err() == context.Canceled {
+			log.Println("The client canceled the request")
+			return nil, status.Error(codes.Canceled, "The client canceled the request")
+		}
+		time.Sleep(1 * time.Second)
+	}
+
 	firstName := req.GetGreeting().GetFirstName()
 
 	result := "Hello " + firstName

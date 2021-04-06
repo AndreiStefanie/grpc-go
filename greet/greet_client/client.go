@@ -8,6 +8,8 @@ import (
 
 	"github.com/AndreiStefanie/grpc-go/greet/greetpb"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 func main() {
@@ -18,20 +20,34 @@ func main() {
 	defer conn.Close()
 
 	c := greetpb.NewGreetServiceClient(conn)
-	// doUnary(c)
+	doUnary(c, 1*time.Second)
+	doUnary(c, 2*time.Second)
 	// doServerStream(c)
 	// doClientStream(c)
-	doBiDi(c)
+	// doBiDi(c)
 }
 
-func doUnary(c greetpb.GreetServiceClient) {
+func doUnary(c greetpb.GreetServiceClient, timeout time.Duration) {
 	req := &greetpb.GreetRequest{
 		Greeting: &greetpb.Greeting{
 			FirstName: "Andrei",
 			LastName:  "Stefanie"}}
-	res, err := c.Greet(context.Background(), req)
+
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+	res, err := c.Greet(ctx, req)
 	if err != nil {
-		log.Fatalf("Could not receive greeting: %v", err)
+		statusErr, ok := status.FromError(err)
+		if ok {
+			if statusErr.Code() == codes.DeadlineExceeded {
+				log.Println("Deadline exceeded")
+			} else {
+				log.Printf("Unexpected error: %v\n", statusErr.Details()...)
+			}
+			return
+		} else {
+			log.Fatalf("Could not receive greeting: %v", err)
+		}
 	}
 
 	log.Println(res.Result)
