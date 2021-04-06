@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"io"
 	"log"
@@ -12,6 +13,7 @@ import (
 	"github.com/AndreiStefanie/grpc-go/greet/greetpb"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/status"
 )
 
@@ -93,6 +95,11 @@ func (*server) GreetEveryone(stream greetpb.GreetService_GreetEveryoneServer) er
 }
 
 func main() {
+	tlsCredentials, err := loadTLSCredentials()
+	if err != nil {
+		log.Fatal("cannot load TLS credentials: ", err)
+	}
+
 	fmt.Println("Starting server :D")
 
 	lis, err := net.Listen("tcp", "0.0.0.0:50051")
@@ -100,11 +107,25 @@ func main() {
 		log.Fatalf("Failed to listen: %v", err)
 	}
 
-	s := grpc.NewServer()
+	s := grpc.NewServer(grpc.Creds(tlsCredentials))
 	greetpb.RegisterGreetServiceServer(s, &server{})
 
 	err = s.Serve(lis)
 	if err != nil {
 		log.Fatalf("Failed to server: %v", err)
 	}
+}
+
+func loadTLSCredentials() (credentials.TransportCredentials, error) {
+	serverCert, err := tls.LoadX509KeyPair("ssl/server-cert.pem", "ssl/server-key.pem")
+	if err != nil {
+		return nil, err
+	}
+
+	config := &tls.Config{
+		Certificates: []tls.Certificate{serverCert},
+		ClientAuth:   tls.NoClientCert,
+	}
+
+	return credentials.NewTLS(config), nil
 }
